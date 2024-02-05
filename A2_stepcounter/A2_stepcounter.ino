@@ -182,7 +182,6 @@ int getSteps() {
     if (a[k] > a[k - 1] && a[k] > a[k + 1] && a[k] > threshold) {
       peak = true;
       Serial.println("Step detected!");
-      delay(500); 
     }
   }
   
