@@ -152,17 +152,23 @@ void loop() {
 int getSteps() {
   bool peak = false;
   float a[BUFFER]={0}; //store acceleration magnitudes
-  const float SMOOTHING_FACTOR = 0.3; // Exponential moving average smoothing factor
+  const float SMOOTHING_FACTOR = 0.35; // Exponential moving average smoothing factor
   float sum = 0;
 
   for (int k = 0; k < BUFFER; k++) {
     /* Get a new sensor event */ 
-    sensors_event_t event; 
-    lis.getEvent(&event);
+    // sensors_event_t event; 
+    // lis.getEvent(&event);
 
-    float x = event.acceleration.x - xavg;
-    float y = event.acceleration.y - yavg;
-    float z = event.acceleration.z - zavg;
+    // float x = event.acceleration.x - xavg;
+    // float y = event.acceleration.y - yavg;
+    // float z = event.acceleration.z - zavg;
+
+    lis.read();
+
+    float x = lis.x - xavg;
+    float y = lis.y - yavg;
+    float z = lis.z - zavg;
     a[k] = sqrt(x*x + y*y + z*z);
     sum += a[k];
     delay(10);
