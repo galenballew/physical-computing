@@ -57,9 +57,8 @@ const float MAX_BATTERY_VOLTAGE = 4.2; // Max LiPoly voltage of a 3.7 battery is
 
 const int BUFFER = 50;
 int stepCount = 0;
-float xavg = 0;
-float yavg = 0;
-float zavg = 0;
+const float threshold = -1000.00;
+bool above = true;
 
 const double weight = 109.0;  // in kilograms
 const double height = 177.8; // in centimeters
@@ -97,27 +96,6 @@ void setup() {
   Serial.print("Range = ");
   Serial.print(2 << lis.getRange());
   Serial.println("G");
-
-  //calibrate accelerometer, idea from https://github.com/abhaysbharadwaj/ArduinoPedometer/blob/master/ArduinoPedometer.cpp
-  float xs = 0;
-  float ys = 0;
-  float zs = 0;
-
-  for (int k = 0; k < 100; k++) {
-    /* Get a new sensor event */ 
-    sensors_event_t event; 
-    lis.getEvent(&event);
-    float x = event.acceleration.x;
-    float y = event.acceleration.y;
-    float z = event.acceleration.z;
-    xs = xs + x;
-    ys = ys + y;
-    zs = zs + z;
-  }
-
-  xavg = xs / 100;
-  yavg = ys / 100;
-  zavg = zs / 100; 
 }
 
 
@@ -141,64 +119,49 @@ void loop() {
 
   // this is just an example, you'd probably want to set it to something more like stepsCount / 10,000 proportional to SCREEN WIDTH
   display.fillRect(0, 55, stepCount, SCREEN_HEIGHT, WHITE); //progress bar to 128 steps
-
   display.display();
 
-  stepCount += getSteps();
-
-  delay(100);
+  getSteps();
 }
 
-int getSteps() {
-  bool peak = false;
+void getSteps() {
   float a[BUFFER]={0}; //store acceleration magnitudes
-  const float SMOOTHING_FACTOR = 0.35; // Exponential moving average smoothing factor
-  float sum = 0;
+  const int SMOOTHING_WINDOW = 5; // moving average smoothing 
 
   for (int k = 0; k < BUFFER; k++) {
     /* Get a new sensor event */ 
-    // sensors_event_t event; 
-    // lis.getEvent(&event);
-
-    // float x = event.acceleration.x - xavg;
-    // float y = event.acceleration.y - yavg;
-    // float z = event.acceleration.z - zavg;
-
     lis.read();
-
-    float x = lis.x - xavg;
-    float y = lis.y - yavg;
-    float z = lis.z - zavg;
-    a[k] = sqrt(x*x + y*y + z*z);
-    sum += a[k];
-    delay(10);
+    float x = lis.x;
+    a[k] = x;
   }
 
-  float threshold = max(sum / BUFFER * 1.1, 10.0); //set threshold to 1.1 times the average acceleration magnitude
-
-  // Apply exponential moving average (low-pass filter)
-  float smoothedValue = a[0];
-  for (int k = 1; k < BUFFER; k++) {
-    smoothedValue = exponentialMovingAverage(a[k], smoothedValue, SMOOTHING_FACTOR);
-    a[k] = smoothedValue;
+  // Apply simple moving average
+  for (int k = SMOOTHING_WINDOW; k < BUFFER - SMOOTHING_WINDOW; k++) {
+    a[k] = MovingAverage(a, k - SMOOTHING_WINDOW, k + SMOOTHING_WINDOW);
     Serial.println(a[k]);
   }
 
   for (int k = 1; k < BUFFER-1; k++) {
-    if (a[k] > a[k - 1] && a[k] > a[k + 1] && a[k] > threshold) {
-      peak = true;
-      Serial.println("Step detected!");
+    if (a[k] > threshold && !above && a[k-1] < a[k] && a[k+1] < a[k]) {
+      above = true;
+      stepCount++;  
+      Serial.println("Top of swing!");
+      break;
+    }
+    else if (a[k] < threshold && above && a[k-1] < a[k] && a[k+1] < a[k]){
+      above = false;
+      stepCount++;
+      Serial.println("Bottom of swing!");
+      break;
     }
   }
-  
-  if (peak) {
-    return 1;
-  }
-  else {
-    return 0;
-  } 
+  return;
 }
 
-float exponentialMovingAverage(float currentValue, float previousAverage, float alpha) {
-  return alpha * currentValue + (1 - alpha) * previousAverage;
+float MovingAverage(float data[], int start, int end) {
+  float sum = 0.0;
+  for (int i = start; i <= end; i++) {
+    sum += data[i];
+  }
+  return sum / (end - start + 1);
 }
