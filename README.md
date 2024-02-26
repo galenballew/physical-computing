@@ -1,5 +1,5 @@
 # physical-computing
-Arduino and C++ code for physical computing projects. 
+Arduino, C++, Python, and machine learning code for physical computing projects. 
 
 
 ### [Responsive Nite Light](https://docs.google.com/presentation/d/17GexLZmjal5UozkQ4pv8OChU1Hmn6NYEQfakeQYuB3Y/edit?usp=sharing)
